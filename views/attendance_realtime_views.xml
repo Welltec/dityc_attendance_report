@@ -8,15 +8,26 @@
             <field name="arch" type="xml">
                 <tree string="Asistencias en Tiempo Real" 
                       create="false" 
-                      edit="false" 
+                      edit="true" 
                       delete="false"
                       decoration-danger="not salida"
                       decoration-info="tipo_dia == 'sabado_am' or tipo_dia == 'sabado_pm'"
                       decoration-warning="es_feriado == True"
                       decoration-muted="tipo_dia == 'domingo'">
                     <header>
-                        <button name="refresh_view" string="Actualizar Datos" type="object" class="oe_highlight"/>
-                        <button name="export_xlsx" string="Exportar a Excel" type="object" icon="fa-download"/>
+                        <button name="refresh_view" 
+                                string="Actualizar Datos" 
+                                type="object" 
+                                class="oe_highlight"/>
+                        <button name="clear_attendance_data" 
+                                string="Vaciar Datos" 
+                                type="object" 
+                                class="text-warning"
+                                confirm="¿Está seguro de que desea vaciar todos los datos? Esta acción no se puede deshacer."/>
+                        <button name="export_xlsx" 
+                                string="Exportar a Excel" 
+                                type="object" 
+                                icon="fa-download"/>
                     </header>
                     <field name="employee_id" widget="many2one_avatar"/>
                     <field name="fecha" widget="date" options="{'format': 'dd/MM/yyyy'}"/>
@@ -50,8 +61,19 @@
                       decoration-warning="es_feriado == True"
                       decoration-muted="tipo_dia == 'domingo'">
                     <header>
-                        <button name="refresh_cache" string="Actualizar Caché" type="object" class="oe_highlight"/>
-                        <button name="export_xlsx" string="Exportar a Excel" type="object" icon="fa-download"/>
+                        <button name="refresh_cache" 
+                                string="Actualizar Caché" 
+                                type="object" 
+                                class="oe_highlight"/>
+                        <button name="clear_cache_data" 
+                                string="Vaciar Caché" 
+                                type="object" 
+                                class="text-warning"
+                                confirm="¿Está seguro de que desea vaciar el caché? Esta acción no se puede deshacer."/>
+                        <button name="export_xlsx" 
+                                string="Exportar a Excel" 
+                                type="object" 
+                                icon="fa-download"/>
                     </header>
                     <field name="employee_id" widget="many2one_avatar"/>
                     <field name="fecha" widget="date" options="{'format': 'dd/MM/yyyy'}"/>

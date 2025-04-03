@@ -233,17 +233,41 @@ class AttendanceRealtimeCache(models.Model):
         return result 
 
     def refresh_cache(self):
-        """Actualiza el caché desde la interfaz de usuario"""
+        """Actualiza el caché desde la vista en tiempo real"""
         try:
             self._actualizar_cache_automatico()
-            # Para refrescar la vista en la interfaz
             return {
                 'type': 'ir.actions.client',
                 'tag': 'reload',
             }
         except Exception as e:
             _logger.error("Error al actualizar el caché: %s", str(e))
-            raise UserError(_("Error al actualizar el caché: %s") % str(e)) 
+            raise UserError(_("Error al actualizar el caché: %s") % str(e))
+
+    def clear_cache_data(self):
+        """Vacía la tabla de caché"""
+        try:
+            _logger.info("Iniciando limpieza de datos del caché")
+            # Eliminar todos los registros del caché
+            self.env.cr.execute("TRUNCATE TABLE %s", (AsIs(self._table),))
+            # Mostrar mensaje de éxito
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Éxito'),
+                    'message': _('El caché ha sido vaciado correctamente.'),
+                    'type': 'success',
+                    'sticky': False,
+                    'next': {
+                        'type': 'ir.actions.client',
+                        'tag': 'reload',
+                    },
+                }
+            }
+        except Exception as e:
+            _logger.error("Error al vaciar el caché: %s", str(e))
+            raise UserError(_("Error al vaciar el caché: %s") % str(e))
 
     def export_xlsx(self):
         """Exporta los datos a Excel"""

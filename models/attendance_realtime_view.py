@@ -61,32 +61,221 @@ class AttendanceRealtimeView(models.Model):
                 -- Crear vista con zona horaria America/Argentina/Buenos_Aires
                 CREATE OR REPLACE VIEW dityc_attendance_realtime_view AS
                 WITH 
-                -- Constantes para definir los límites horarios
-                constants AS (
+                -- Constantes y configuración
+                config AS (
                     SELECT 
-                        '00:01:00'::time as inicio_sabado_50,
-                        '13:00:00'::time as limite_sabado_50,
-                        '13:01:00'::time as inicio_sabado_100
+                        'America/Argentina/Buenos_Aires'::text as zona_horaria,
+                        '00:01:00'::time as inicio_dia,
+                        '13:00:00'::time as corte_sabado,
+                        '23:59:59'::time as fin_dia,
+                        3::integer as meses_historia,
+                        -- Límites de horas por tipo
+                        24.0::float as max_horas_dia,
+                        13.0::float as max_horas_sabado_am,
+                        11.0::float as max_horas_sabado_pm
                 ),
-                date_series AS (
-                    -- Generar fechas solo para los últimos 3 meses (mes actual y dos anteriores)
-                    SELECT generate_series(
-                        (date_trunc('month', NOW()) - interval '2 month')::date,
-                        (date_trunc('month', NOW() + interval '1 month') - interval '1 day')::date,
-                        '1 day'::interval
-                    )::date AS fecha
+                -- Fechas de inicio y fin del período
+                periodo AS (
+                    SELECT 
+                        date_trunc('month', timezone(
+                            (SELECT zona_horaria FROM config), 
+                            CURRENT_TIMESTAMP
+                        ) - interval '2 month')::date as fecha_inicio,
+                        date_trunc('month', timezone(
+                            (SELECT zona_horaria FROM config), 
+                            CURRENT_TIMESTAMP + interval '1 month'
+                        ) - interval '1 day')::date as fecha_fin
                 ),
-                employees AS (
-                    -- Obtener todos los empleados activos para los últimos 3 meses
-                    SELECT id, company_id FROM hr_employee WHERE active = true
+                -- Normalizar registros de asistencia a zona horaria local
+                asistencias_local AS (
+                    SELECT 
+                        a.id,
+                        a.employee_id,
+                        e.company_id,
+                        -- Convertir fechas/horas a zona horaria local
+                        timezone(
+                            (SELECT zona_horaria FROM config),
+                            a.check_in AT TIME ZONE 'UTC'
+                        ) as entrada_local,
+                        timezone(
+                            (SELECT zona_horaria FROM config),
+                            a.check_out AT TIME ZONE 'UTC'
+                        ) as salida_local,
+                        -- Extraer componentes de fecha/hora
+                        timezone(
+                            (SELECT zona_horaria FROM config),
+                            a.check_in AT TIME ZONE 'UTC'
+                        )::date as fecha,
+                        timezone(
+                            (SELECT zona_horaria FROM config),
+                            a.check_in AT TIME ZONE 'UTC'
+                        )::time as hora_entrada,
+                        timezone(
+                            (SELECT zona_horaria FROM config),
+                            a.check_out AT TIME ZONE 'UTC'
+                        )::time as hora_salida,
+                        -- Calcular horas totales
+                        ROUND(
+                            EXTRACT(EPOCH FROM (
+                                timezone(
+                                    (SELECT zona_horaria FROM config),
+                                    a.check_out AT TIME ZONE 'UTC'
+                                ) - 
+                                timezone(
+                                    (SELECT zona_horaria FROM config),
+                                    a.check_in AT TIME ZONE 'UTC'
+                                )
+                            )) / 3600.0,
+                            2
+                        ) as horas_totales
+                    FROM hr_attendance a
+                    JOIN hr_employee e ON e.id = a.employee_id
+                    WHERE 
+                        a.check_in IS NOT NULL 
+                        AND a.check_out IS NOT NULL
+                        AND a.check_out > a.check_in
+                        AND timezone(
+                            (SELECT zona_horaria FROM config),
+                            a.check_in AT TIME ZONE 'UTC'
+                        )::date >= (SELECT fecha_inicio FROM periodo)
                 ),
-                employee_dates AS (
-                    -- Generar una fila por cada empleado y fecha
+                -- Obtener feriados
+                feriados AS (
+                    SELECT 
+                        l.employee_id,
+                        l.request_date_from::date as fecha,
+                        lt.name::text as nombre_feriado
+                    FROM hr_leave l
+                    JOIN hr_leave_type lt ON l.holiday_status_id = lt.id
+                    WHERE 
+                        lt.work_entry_type_id IN (
+                            SELECT id FROM hr_work_entry_type WHERE is_leave IS TRUE
+                        )
+                        AND l.state = 'validate'
+                        AND l.request_date_from::date >= (SELECT fecha_inicio FROM periodo)
+                    
+                    UNION
+                    
+                    -- Feriados nacionales para todos los empleados
+                    SELECT 
+                        e.id as employee_id,
+                        national_holidays.date_holiday as fecha,
+                        national_holidays.name::text as nombre_feriado
+                    FROM hr_employee e
+                    CROSS JOIN (
+                        -- Lista de feriados nacionales que aplican a todos los empleados
+                        SELECT '2025-04-02'::date as date_holiday, 'Día de los Veteranos y Caídos en Malvinas'::text as name
+                        UNION ALL SELECT '2025-01-01'::date, 'Año Nuevo'::text
+                        UNION ALL SELECT '2025-02-24'::date, 'Carnaval'::text
+                        UNION ALL SELECT '2025-02-25'::date, 'Carnaval'::text
+                        UNION ALL SELECT '2025-03-24'::date, 'Día de la Memoria'::text
+                        UNION ALL SELECT '2025-04-18'::date, 'Viernes Santo'::text
+                        UNION ALL SELECT '2025-05-01'::date, 'Día del Trabajador'::text
+                        UNION ALL SELECT '2025-05-25'::date, 'Día de la Revolución de Mayo'::text
+                        UNION ALL SELECT '2025-06-20'::date, 'Día de la Bandera'::text
+                        UNION ALL SELECT '2025-07-09'::date, 'Día de la Independencia'::text
+                        UNION ALL SELECT '2025-08-17'::date, 'Paso a la Inmortalidad del Gral. San Martín'::text
+                        UNION ALL SELECT '2025-10-12'::date, 'Día del Respeto a la Diversidad Cultural'::text
+                        UNION ALL SELECT '2025-11-20'::date, 'Día de la Soberanía Nacional'::text
+                        UNION ALL SELECT '2025-12-08'::date, 'Inmaculada Concepción de María'::text
+                        UNION ALL SELECT '2025-12-25'::date, 'Navidad'::text
+                    ) AS national_holidays
+                    WHERE date_holiday >= (SELECT fecha_inicio FROM periodo)
+                ),
+                -- Calcular horas por regla
+                horas_calculadas AS (
+                    SELECT 
+                        a.*,
+                        -- Horas feriado (evaluamos primero)
+                        CASE 
+                            WHEN EXISTS (
+                                SELECT 1 FROM feriados f 
+                                WHERE f.employee_id = a.employee_id 
+                                AND f.fecha = a.fecha
+                            ) THEN a.horas_totales
+                            ELSE 0
+                        END as horas_feriado,
+                        -- Horas normales (L-V) solo si no es feriado
+                        CASE 
+                            WHEN EXTRACT(DOW FROM a.fecha) BETWEEN 1 AND 5
+                            AND NOT EXISTS (
+                                SELECT 1 FROM feriados f 
+                                WHERE f.employee_id = a.employee_id 
+                                AND f.fecha = a.fecha
+                            )
+                            THEN LEAST(a.horas_totales, (SELECT max_horas_dia FROM config))
+                            ELSE 0
+                        END as horas_normales,
+                        -- Horas sábado 50% (hasta 13:00) solo si no es feriado
+                        CASE 
+                            WHEN EXTRACT(DOW FROM a.fecha) = 6
+                            AND NOT EXISTS (
+                                SELECT 1 FROM feriados f 
+                                WHERE f.employee_id = a.employee_id 
+                                AND f.fecha = a.fecha
+                            )
+                            THEN 
+                                CASE
+                                    -- Todo el período antes de las 13:00
+                                    WHEN a.hora_salida <= (SELECT corte_sabado FROM config)
+                                    THEN LEAST(a.horas_totales, (SELECT max_horas_sabado_am FROM config))
+                                    -- Período que cruza las 13:00
+                                    WHEN a.hora_entrada < (SELECT corte_sabado FROM config)
+                                    THEN LEAST(
+                                        EXTRACT(EPOCH FROM (
+                                            (a.fecha + (SELECT corte_sabado FROM config))::timestamp - 
+                                            a.entrada_local
+                                        )) / 3600.0,
+                                        (SELECT max_horas_sabado_am FROM config)
+                                    )
+                                    ELSE 0
+                                END
+                            ELSE 0
+                        END as horas_sabado_50,
+                        -- Horas 100% (sábado después de 13:00 y domingo) solo si no es feriado
+                        CASE 
+                            WHEN EXTRACT(DOW FROM a.fecha) IN (0, 6)  -- Domingo o Sábado
+                            AND NOT EXISTS (
+                                SELECT 1 FROM feriados f 
+                                WHERE f.employee_id = a.employee_id 
+                                AND f.fecha = a.fecha
+                            )
+                            THEN 
+                                CASE
+                                    WHEN EXTRACT(DOW FROM a.fecha) = 0  -- Domingo
+                                    THEN LEAST(a.horas_totales, (SELECT max_horas_dia FROM config))
+                                    WHEN EXTRACT(DOW FROM a.fecha) = 6  -- Sábado
+                                    THEN 
+                                        CASE
+                                            -- Todo el período después de las 13:00
+                                            WHEN a.hora_entrada >= (SELECT corte_sabado FROM config)
+                                            THEN LEAST(a.horas_totales, (SELECT max_horas_sabado_pm FROM config))
+                                            -- Período que cruza las 13:00
+                                            WHEN a.hora_entrada < (SELECT corte_sabado FROM config)
+                                            AND a.hora_salida > (SELECT corte_sabado FROM config)
+                                            THEN LEAST(
+                                                EXTRACT(EPOCH FROM (
+                                                    a.salida_local - 
+                                                    (a.fecha + (SELECT corte_sabado FROM config))::timestamp
+                                                )) / 3600.0,
+                                                (SELECT max_horas_sabado_pm FROM config)
+                                            )
+                                            ELSE 0
+                                        END
+                                    ELSE 0
+                                END
+                            ELSE 0
+                        END as horas_extra_100
+                    FROM asistencias_local a
+                ),
+                -- Generar serie de fechas y empleados
+                fechas_empleados AS (
                     SELECT 
                         e.id as employee_id,
                         e.company_id,
-                        d.fecha,
-                        CASE EXTRACT(DOW FROM d.fecha)
+                        d::date as fecha,
+                        EXTRACT(DOW FROM d::date) as dia_semana,
+                        CASE EXTRACT(DOW FROM d::date)
                             WHEN 0 THEN 'Domingo'
                             WHEN 1 THEN 'Lunes'
                             WHEN 2 THEN 'Martes'
@@ -94,226 +283,74 @@ class AttendanceRealtimeView(models.Model):
                             WHEN 4 THEN 'Jueves'
                             WHEN 5 THEN 'Viernes'
                             WHEN 6 THEN 'Sábado'
-                        END as dia_semana,
-                        EXTRACT(DOW FROM d.fecha) as dow
-                    FROM employees e
-                    CROSS JOIN date_series d
-                ),
-                holidays AS (
-                    -- Obtener todos los feriados de los últimos 3 meses
-                    -- Combinamos feriados individuales por empleado y feriados globales
-                    SELECT 
-                        l.employee_id,
-                        l.request_date_from::date as fecha,
-                        lt.name::text as nombre_feriado
-                    FROM hr_leave l
-                    JOIN hr_leave_type lt ON l.holiday_status_id = lt.id
-                    WHERE lt.work_entry_type_id IN (SELECT id FROM hr_work_entry_type WHERE is_leave IS TRUE)
-                    AND l.state = 'validate'
-                    AND l.request_date_from::date >= (date_trunc('month', NOW()) - interval '2 month')::date
-                    
-                    UNION
-                    
-                    -- Feriados nacionales para todos los empleados
-                    -- Incluimos feriados desde una tabla global de feriados o fechas específicas
-                    SELECT 
-                        e.id as employee_id,
-                        date_holiday as fecha,
-                        national_holidays.name::text as nombre_feriado
+                        END as nombre_dia
                     FROM hr_employee e
-                    CROSS JOIN (
-                        -- Lista de feriados nacionales que aplican a todos los empleados
-                        -- Esta consulta se puede reemplazar por una tabla real de feriados si existe
-                        SELECT '2025-04-02'::date as date_holiday, 'Día de los Veteranos y Caídos en Malvinas' as name
-                        UNION ALL SELECT '2025-01-01'::date, 'Año Nuevo'
-                        UNION ALL SELECT '2025-02-24'::date, 'Carnaval'
-                        UNION ALL SELECT '2025-02-25'::date, 'Carnaval'
-                        UNION ALL SELECT '2025-03-24'::date, 'Día de la Memoria'
-                        UNION ALL SELECT '2025-04-18'::date, 'Viernes Santo'
-                        UNION ALL SELECT '2025-05-01'::date, 'Día del Trabajador'
-                        UNION ALL SELECT '2025-05-25'::date, 'Día de la Revolución de Mayo'
-                        UNION ALL SELECT '2025-06-20'::date, 'Día de la Bandera'
-                        UNION ALL SELECT '2025-07-09'::date, 'Día de la Independencia'
-                        UNION ALL SELECT '2025-08-17'::date, 'Paso a la Inmortalidad del Gral. San Martín'
-                        UNION ALL SELECT '2025-10-12'::date, 'Día del Respeto a la Diversidad Cultural'
-                        UNION ALL SELECT '2025-11-20'::date, 'Día de la Soberanía Nacional'
-                        UNION ALL SELECT '2025-12-08'::date, 'Inmaculada Concepción de María'
-                        UNION ALL SELECT '2025-12-25'::date, 'Navidad'
-                    ) AS national_holidays
-                    WHERE date_holiday >= (date_trunc('month', NOW()) - interval '2 month')::date
-                ),
-                attendance_data AS (
-                    -- Procesar las asistencias de los últimos 3 meses
-                    SELECT 
-                        a.id,
-                        a.employee_id,
-                        e.company_id,
-                        -- Convertir check_in/check_out a zona horaria local
-                        (a.check_in AT TIME ZONE 'UTC')::date as fecha,
-                        (a.check_in AT TIME ZONE 'UTC') as entrada,
-                        (a.check_out AT TIME ZONE 'UTC') as salida,
-                        -- Calcular horas totales
-                        EXTRACT(EPOCH FROM (
-                            (a.check_out AT TIME ZONE 'UTC') - (a.check_in AT TIME ZONE 'UTC')
-                        )) / 3600.0 as horas_totales
-                    FROM hr_attendance a
-                    JOIN hr_employee e ON e.id = a.employee_id
-                    WHERE a.check_out IS NOT NULL
-                    AND (a.check_in AT TIME ZONE 'UTC')::date >= (date_trunc('month', NOW()) - interval '2 month')::date
+                    CROSS JOIN generate_series(
+                        (SELECT fecha_inicio FROM periodo),
+                        (SELECT fecha_fin FROM periodo),
+                        '1 day'::interval
+                    ) d
+                    WHERE e.active = true
                 )
+                -- Consulta final
                 SELECT 
-                    COALESCE(ad.id, -ed.employee_id) AS id,
-                    ed.employee_id,
-                    ed.company_id,
-                    ed.fecha,
-                    ed.dia_semana,
-                    ad.entrada,
-                    ad.salida,
+                    COALESCE(h.id, -fe.employee_id) as id,
+                    fe.employee_id,
+                    fe.company_id,
+                    fe.fecha,
+                    fe.nombre_dia as dia_semana,
+                    -- Convertir a UTC para almacenamiento
+                    h.entrada_local AT TIME ZONE (SELECT zona_horaria FROM config) AT TIME ZONE 'UTC' as entrada,
+                    h.salida_local AT TIME ZONE (SELECT zona_horaria FROM config) AT TIME ZONE 'UTC' as salida,
                     -- Determinar tipo de día
                     CASE 
-                        -- Primero verificar si es un feriado
                         WHEN EXISTS (
-                            SELECT 1 FROM holidays h
-                            WHERE h.employee_id = ed.employee_id
-                            AND h.fecha = ed.fecha
+                            SELECT 1 FROM feriados f 
+                            WHERE f.employee_id = fe.employee_id 
+                            AND f.fecha = fe.fecha
                         ) THEN 'feriado'
-                        -- Si no es feriado, determinar el tipo de día por día de la semana
-                        WHEN ed.dow = 0 THEN 'domingo'
-                        WHEN ed.dow = 6 THEN 
+                        WHEN fe.dia_semana = 0 THEN 'domingo'
+                        WHEN fe.dia_semana = 6 THEN 
                             CASE 
-                                -- Si no hay registro de entrada, usar valor por defecto
-                                WHEN ad.entrada IS NULL THEN 'sabado_am'
-                                -- Clasificar como sabado_am cuando la salida es antes o igual a las 13:00
-                                WHEN (ad.salida AT TIME ZONE 'America/Argentina/Buenos_Aires')::time <= 
-                                    (SELECT limite_sabado_50 FROM constants)
-                                THEN 'sabado_am'
-                                -- En cualquier otro caso (salida después de 13:00) es sabado_pm
+                                WHEN h.hora_salida <= (SELECT corte_sabado FROM config) THEN 'sabado_am'
                                 ELSE 'sabado_pm'
                             END
                         ELSE 'habil'
                     END as tipo_dia,
-                    -- Determinar si es feriado
+                    -- Indicador de feriado
                     EXISTS (
-                        SELECT 1 FROM holidays h
-                        WHERE h.employee_id = ed.employee_id
-                        AND h.fecha = ed.fecha
+                        SELECT 1 FROM feriados f 
+                        WHERE f.employee_id = fe.employee_id 
+                        AND f.fecha = fe.fecha
                     ) as es_feriado,
                     -- Nombre del feriado
-                    COALESCE((
-                        SELECT h.nombre_feriado::text FROM holidays h
-                        WHERE h.employee_id = ed.employee_id
-                        AND h.fecha = ed.fecha
+                    (
+                        SELECT f.nombre_feriado 
+                        FROM feriados f 
+                        WHERE f.employee_id = fe.employee_id 
+                        AND f.fecha = fe.fecha 
                         LIMIT 1
-                    ), '') as nombre_feriado,
-                    -- Horas normales (Lunes a Viernes todo el día)
+                    ) as nombre_feriado,
+                    -- Horas calculadas con casting explícito
+                    ROUND(COALESCE(h.horas_normales, 0)::numeric, 2) as horas_semana_normal,
+                    ROUND(COALESCE(h.horas_sabado_50, 0)::numeric, 2) as horas_sabado_50,
+                    ROUND(COALESCE(h.horas_extra_100, 0)::numeric, 2) as horas_extra_100,
+                    -- Horas feriado
                     CASE 
-                        -- Solo calcular horas normales de lunes a viernes - nunca en sábados o domingos
-                        WHEN ed.dow BETWEEN 1 AND 5 
-                        -- No calcular horas normales si es feriado
-                        AND NOT EXISTS (
-                            SELECT 1 FROM holidays h
-                            WHERE h.employee_id = ed.employee_id
-                            AND h.fecha = ed.fecha
-                        )
-                        AND ad.id IS NOT NULL
-                        THEN ROUND(ABS(ad.horas_totales), 2)
-                        ELSE 0
-                    END as horas_semana_normal,
-                    -- Horas sábado 50% (00:01 a 13:00)
-                    CASE 
-                        -- Solo calcular horas 50% en sábados, nunca en domingos
-                        WHEN ed.dow = 6 
-                        -- No calcular horas 50% si es feriado
-                        AND NOT EXISTS (
-                            SELECT 1 FROM holidays h
-                            WHERE h.employee_id = ed.employee_id
-                            AND h.fecha = ed.fecha
-                        )
-                        AND ad.id IS NOT NULL
-                        THEN 
-                            CASE
-                                -- REGLA 1: Si salida es antes o igual a las 13:00, todas las horas son 50%
-                                WHEN (ad.salida AT TIME ZONE 'America/Argentina/Buenos_Aires')::time <= (SELECT limite_sabado_50 FROM constants)
-                                THEN ROUND(ABS(ad.horas_totales), 2)
-                                
-                                -- REGLA 3 PARTE 1: Si entrada antes de 13:00 y salida después, calcular solo horas hasta 13:00
-                                WHEN (ad.entrada AT TIME ZONE 'America/Argentina/Buenos_Aires')::time < (SELECT limite_sabado_50 FROM constants)
-                                AND (ad.salida AT TIME ZONE 'America/Argentina/Buenos_Aires')::time > (SELECT limite_sabado_50 FROM constants)
-                                THEN ROUND(
-                                    ABS(EXTRACT(EPOCH FROM (
-                                        (ed.fecha + (SELECT limite_sabado_50 FROM constants))::timestamp AT TIME ZONE 'America/Argentina/Buenos_Aires'
-                                        - ad.entrada AT TIME ZONE 'America/Argentina/Buenos_Aires'
-                                    )) / 3600.0),
-                                    2)
-                                
-                                -- REGLA 2: Si entrada es después de las 13:00, no hay horas al 50%
-                                ELSE 0
-                            END
-                        ELSE 0
-                    END as horas_sabado_50,
-                    -- Horas 100% (sábado 13:01 hasta domingo 23:59)
-                    CASE 
-                        WHEN (
-                            -- Sábado o domingo
-                            ((ed.dow = 6 OR ed.dow = 0) AND ad.id IS NOT NULL)
-                        )
-                        -- No calcular horas 100% si es feriado
-                        AND NOT EXISTS (
-                            SELECT 1 FROM holidays h
-                            WHERE h.employee_id = ed.employee_id
-                            AND h.fecha = ed.fecha
-                        )
-                        THEN 
-                            CASE
-                                -- REGLA: Para domingos, todas las horas son 100%
-                                WHEN ed.dow = 0
-                                THEN ROUND(ABS(ad.horas_totales), 2)
-                                
-                                -- REGLA 2: Para sábados, si la entrada es a partir de las 13:00, todas las horas son 100%
-                                WHEN ed.dow = 6 AND (ad.entrada AT TIME ZONE 'America/Argentina/Buenos_Aires')::time >= (SELECT limite_sabado_50 FROM constants)
-                                THEN ROUND(ABS(ad.horas_totales), 2)
-                                
-                                -- REGLA 3 PARTE 2: Para sábados, si entrada antes de 13:00 y salida después, solo contar horas después de 13:00
-                                WHEN ed.dow = 6 
-                                    AND (ad.entrada AT TIME ZONE 'America/Argentina/Buenos_Aires')::time < (SELECT limite_sabado_50 FROM constants)
-                                    AND (ad.salida AT TIME ZONE 'America/Argentina/Buenos_Aires')::time > (SELECT limite_sabado_50 FROM constants)
-                                THEN ROUND(
-                                    ABS(EXTRACT(EPOCH FROM (
-                                        ad.salida AT TIME ZONE 'America/Argentina/Buenos_Aires'
-                                        - (ed.fecha + (SELECT limite_sabado_50 FROM constants))::timestamp AT TIME ZONE 'America/Argentina/Buenos_Aires'
-                                    )) / 3600.0),
-                                    2)
-                                
-                                -- REGLA 1: Para sábados con salida antes o igual a las 13:00, no hay horas al 100%
-                                ELSE 0
-                            END
-                        ELSE 0
-                    END as horas_extra_100,
-                    -- Horas feriado (todo el día)
-                    CASE 
-                        -- Si es feriado, contar todas las horas como horas de feriado
                         WHEN EXISTS (
-                            SELECT 1 FROM holidays h
-                            WHERE h.employee_id = ed.employee_id
-                            AND h.fecha = ed.fecha
-                        )
-                        AND ad.id IS NOT NULL
-                        THEN ROUND(
-                            ABS(ad.horas_totales),
-                            2)
+                            SELECT 1 FROM feriados f 
+                            WHERE f.employee_id = fe.employee_id 
+                            AND f.fecha = fe.fecha
+                        ) THEN ROUND(COALESCE(h.horas_feriado, 0)::numeric, 2)
                         ELSE 0
                     END as horas_feriado,
-                    -- Total horas trabajadas (suma de todas las categorías)
-                    CASE 
-                        WHEN ad.id IS NOT NULL
-                        THEN ROUND(
-                            ABS(ad.horas_totales),
-                            2)
-                        ELSE 0
-                    END as total_horas_trabajadas
-                FROM employee_dates ed
-                LEFT JOIN attendance_data ad ON ed.employee_id = ad.employee_id AND ed.fecha = ad.fecha
-                ORDER BY ed.fecha DESC, ed.employee_id
+                    -- Total de horas
+                    ROUND(COALESCE(h.horas_totales, 0)::numeric, 2) as total_horas_trabajadas
+                FROM fechas_empleados fe
+                LEFT JOIN horas_calculadas h ON 
+                    fe.employee_id = h.employee_id 
+                    AND fe.fecha = h.fecha
+                ORDER BY fe.fecha DESC, fe.employee_id;
             """)
             _logger.info("Vista %s creada exitosamente", self._table)
             
@@ -402,4 +439,33 @@ class AttendanceRealtimeView(models.Model):
             }
         except Exception as e:
             _logger.error("Error al actualizar la vista: %s", str(e))
-            raise UserError(_("Error al actualizar la vista: %s") % str(e)) 
+            raise UserError(_("Error al actualizar la vista: %s") % str(e))
+
+    def clear_attendance_data(self):
+        """Vacía la tabla de datos de asistencia"""
+        try:
+            _logger.info("Iniciando limpieza de datos de asistencia")
+            # Eliminar la vista
+            self.env.cr.execute("DROP VIEW IF EXISTS %s", (AsIs(self._table),))
+            # Recrear la vista vacía
+            self.init()
+            # Notificar al caché
+            self._notificar_cambios_cache()
+            # Mostrar mensaje de éxito
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Éxito'),
+                    'message': _('Los datos han sido vaciados correctamente.'),
+                    'type': 'success',
+                    'sticky': False,
+                    'next': {
+                        'type': 'ir.actions.client',
+                        'tag': 'reload',
+                    },
+                }
+            }
+        except Exception as e:
+            _logger.error("Error al vaciar los datos: %s", str(e))
+            raise UserError(_("Error al vaciar los datos: %s") % str(e)) 
