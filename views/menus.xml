@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Menú Principal -->
+        <menuitem id="menu_dityc_attendance_root"
+                  name="Asistencias DITyC"
+                  parent="hr.menu_hr_root"
+                  sequence="5"
+                  groups="hr.group_hr_user"/>
+
+        <!-- Menú de Asistencias en Tiempo Real -->
+        <menuitem id="menu_attendance_realtime"
+                  name="Asistencias en Tiempo Real"
+                  parent="menu_dityc_attendance_root"
+                  action="action_attendance_realtime"
+                  sequence="10"
+                  groups="hr.group_hr_user"/>
+
+        <!-- Menú de Reportes -->
+        <menuitem id="menu_attendance_reports"
+                  name="Reportes de Asistencias"
+                  parent="menu_dityc_attendance_root"
+                  action="action_attendance_realtime_wizard"
+                  sequence="30"
+                  groups="hr.group_hr_user"/>
+    </data>
+</odoo> 

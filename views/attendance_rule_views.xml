@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Acción para las Reglas Horarias -->
+        <record id="action_hr_attendance_rule" model="ir.actions.act_window">
+            <field name="name">Reglas Horarias</field>
+            <field name="res_model">hr.attendance.rule</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Crea tu primera regla horaria
+                </p>
+                <p>
+                    Las reglas horarias te permiten definir diferentes porcentajes
+                    según el tipo de día y rango horario.
+                </p>
+            </field>
+        </record>
+
+        <record id="view_hr_attendance_rule_tree" model="ir.ui.view">
+            <field name="name">hr.attendance.rule.tree</field>
+            <field name="model">hr.attendance.rule</field>
+            <field name="arch" type="xml">
+                <tree string="Reglas Horarias">
+                    <field name="name"/>
+                    <field name="day_type"/>
+                    <field name="from_hour"/>
+                    <field name="to_hour"/>
+                    <field name="percentage"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_hr_attendance_rule_form" model="ir.ui.view">
+            <field name="name">hr.attendance.rule.form</field>
+            <field name="model">hr.attendance.rule</field>
+            <field name="arch" type="xml">
+                <form string="Regla Horaria">
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="toggle_active" type="object"
+                                    class="oe_stat_button" icon="fa-archive">
+                                <field name="active" widget="boolean_button"
+                                    options='{"terminology": "archive"}'/>
+                            </button>
+                            
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Nombre de la Regla"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="day_type"/>
+                                <field name="from_hour"/>
+                                <field name="to_hour"/>
+                                <field name="percentage"/>
+                            </group>
+                            <group>
+                                <field name="date_start"/>
+                                <field name="date_end"/>
+                                <field name="grace_period_entry"/>
+                                <field name="grace_period_exit"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Estructura Dinámica">
+                                <group>
+                                    <field name="structure_json" widget="json_inline"/>
+                                    <separator string="Vista Previa"/>
+                                    <field name="structure_preview" widget="ace" options="{'type': 'json'}" readonly="1"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_hr_attendance_rule_search" model="ir.ui.view">
+            <field name="name">hr.attendance.rule.search</field>
+            <field name="model">hr.attendance.rule</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Reglas Horarias">
+                    <field name="name"/>
+                    <field name="day_type"/>
+                    <field name="percentage"/>
+                    <filter string="Archivado" name="inactive" domain="[('active', '=', False)]"/>
+                    <group expand="0" string="Agrupar Por">
+                        <filter string="Tipo de Día" name="group_day_type" context="{'group_by': 'day_type'}"/>
+                        <filter string="Porcentaje" name="group_percentage" context="{'group_by': 'percentage'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+    </data>
+</odoo> 

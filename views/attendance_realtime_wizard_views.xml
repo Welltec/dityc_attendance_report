@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Formulario del Wizard -->
+        <record id="view_attendance_realtime_wizard_form" model="ir.ui.view">
+            <field name="name">dityc.attendance.realtime.wizard.form</field>
+            <field name="model">dityc.attendance.realtime.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Filtros de Asistencia">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="fecha_desde" widget="date"/>
+                                <field name="fecha_hasta" widget="date"/>
+                                <field name="company_id"/>
+                            </group>
+                            <group>
+                                <field name="employee_ids" widget="many2many_tags"/>
+                                <field name="show_group_by_employee" invisible="1"/>
+                                <field name="group_by_employee" invisible="not show_group_by_employee"/>
+                            </group>
+                        </group>
+                        <!-- Campos ocultos para el archivo Excel -->
+                        <field name="excel_file" invisible="1"/>
+                        <field name="excel_filename" invisible="1"/>
+                    </sheet>
+                    <footer>
+                        <button name="action_view_attendance" string="Ver Asistencias" type="object" class="btn-primary"/>
+                        <button name="action_export_excel" string="Exportar Excel" type="object" class="btn-secondary" icon="fa-file-excel-o"/>
+                        <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Acción del Wizard -->
+        <record id="action_attendance_realtime_wizard" model="ir.actions.act_window">
+            <field name="name">Filtros de Asistencia</field>
+            <field name="res_model">dityc.attendance.realtime.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_dityc_attendance_realtime_cache"/>
+            <field name="binding_view_types">tree,form</field>
+        </record>
+    </data>
+</odoo> 

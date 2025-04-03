@@ -1,0 +1,481 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="attendance_report_template" name="Reporte de Asistencias">
+        <t t-call="web.layout">
+            <t t-set="title">Reporte de Asistencias</t>
+            <t t-set="head">
+                <!-- Google Fonts -->
+                <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+                <style>
+                    /* Estilos generales */
+                    body {
+                        font-family: 'Poppins', sans-serif;
+                        background-color: #f5f7fa;
+                        color: #2d3436;
+                    }
+
+                    .container {
+                        max-width: 1400px;
+                        margin: 2rem auto;
+                        padding: 2rem;
+                        background-color: #ffffff;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                        border-radius: 12px;
+                    }
+
+                    /* Estilos del encabezado */
+                    .report-header {
+                        border-bottom: 2px solid #e2e8f0;
+                        margin-bottom: 2rem;
+                        padding-bottom: 1.5rem;
+                        position: relative;
+                    }
+
+                    .report-header h2 {
+                        color: #2c3e50;
+                        font-weight: 600;
+                        font-size: 2rem;
+                        margin-bottom: 1rem;
+                        letter-spacing: -0.5px;
+                    }
+
+                    .report-header h4 {
+                        color: #34495e;
+                        font-weight: 500;
+                        font-size: 1.25rem;
+                        margin-bottom: 0.5rem;
+                    }
+
+                    .report-header p {
+                        color: #64748b;
+                        font-size: 1rem;
+                        font-weight: 400;
+                    }
+
+                    /* Botón de impresión */
+                    .print-button {
+                        position: absolute;
+                        top: 1.5rem;
+                        right: 1.5rem;
+                        padding: 0.75rem 1.5rem;
+                        background-color: #0ea5e9;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        transition: all 0.3s ease;
+                        font-weight: 500;
+                        font-size: 0.875rem;
+                        box-shadow: 0 2px 4px rgba(14, 165, 233, 0.2);
+                    }
+
+                    .print-button:hover {
+                        background-color: #0284c7;
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 6px rgba(14, 165, 233, 0.3);
+                    }
+
+                    .print-button i {
+                        font-size: 1rem;
+                    }
+
+                    /* Estilos de la barra de información */
+                    .info-bar {
+                        background-color: #f8fafc;
+                        border-left: 4px solid #0ea5e9;
+                        padding: 1.25rem;
+                        margin-bottom: 2rem;
+                        border-radius: 8px;
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                    }
+
+                    .info-bar strong {
+                        color: #334155;
+                        font-weight: 600;
+                    }
+
+                    /* Estilos de la tabla */
+                    .table-container {
+                        margin-top: 1.5rem;
+                        overflow-x: auto;
+                        border-radius: 8px;
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                    }
+
+                    .table {
+                        width: 100%;
+                        margin-bottom: 0;
+                        border-collapse: separate;
+                        border-spacing: 0;
+                        font-size: 0.875rem;
+                    }
+
+                    .table thead th {
+                        background-color: #1e293b;
+                        color: white;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        letter-spacing: 0.05em;
+                        padding: 1rem;
+                        font-size: 0.75rem;
+                        white-space: nowrap;
+                    }
+
+                    .table tbody tr {
+                        transition: all 0.2s ease;
+                    }
+
+                    .table tbody tr:nth-child(even) {
+                        background-color: #f8fafc;
+                    }
+
+                    .table tbody tr:hover {
+                        background-color: #e2e8f0;
+                    }
+
+                    .table td {
+                        padding: 1rem;
+                        border-bottom: 1px solid #e2e8f0;
+                        color: #475569;
+                    }
+
+                    .table td.number-cell {
+                        text-align: right;
+                        font-family: 'Roboto Mono', monospace;
+                        font-weight: 500;
+                    }
+
+                    /* Estilos para grupos y totales */
+                    .group-row {
+                        background-color:rgb(123, 158, 212) !important;
+                        color: white;
+                        font-weight: 600;
+                        font-size: 1.1rem;
+                        border-top: 2px solid #0ea5e9;
+                    }
+
+                    .group-row td {
+                        padding: 1rem !important;
+                    }
+
+                    .group-total {
+                        font-weight: 600;
+                        color: #0ea5e9;
+                        background-color: #f0f9ff;
+                        font-family: 'Roboto Mono', monospace;
+                    }
+
+                    .group-total td {
+                        border-bottom: 2px solid #0ea5e9 !important;
+                    }
+
+                    .group-detail {
+                        background-color: #ffffff;
+                    }
+
+                    .group-detail:hover {
+                        background-color: #f1f5f9 !important;
+                    }
+
+                    .number-cell {
+                        text-align: right;
+                        font-family: 'Roboto Mono', monospace;
+                        font-weight: 500;
+                    }
+
+                    .total-row {
+                        background-color: #0f172a !important;
+                        color: white;
+                        font-weight: 700;
+                        font-size: 1.1rem;
+                    }
+
+                    .total-row td {
+                        padding: 1.25rem !important;
+                        border-top: 3px solid #0ea5e9 !important;
+                    }
+
+                    @media print {
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            background-color: white;
+                        }
+
+                        .container {
+                            box-shadow: none;
+                            padding: 15px;
+                            max-width: 100%;
+                            margin: 0;
+                        }
+
+                        .print-button {
+                            display: none;
+                        }
+
+                        .table thead th {
+                            background-color: #1e293b !important;
+                            color: white !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+
+                        .table tbody tr:nth-child(even) {
+                            background-color: #f8fafc !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+
+                        .info-bar {
+                            background-color: #f8fafc !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                            border-left: 4px solid #0ea5e9 !important;
+                        }
+
+                        .table tr {
+                            page-break-inside: avoid;
+                        }
+
+                        .table thead {
+                            display: table-header-group;
+                        }
+
+                        @page {
+                            margin: 1.5cm;
+                            size: landscape;
+                        }
+
+                        .group-row {
+                            background-color: #1e293b !important;
+                            color: white !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+
+                        .group-total {
+                            background-color: #f0f9ff !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+
+                        .total-row {
+                            background-color: #0f172a !important;
+                            color: white !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+                    }
+
+                    @media (max-width: 768px) {
+                        .container {
+                            margin: 0;
+                            padding: 1rem;
+                            border-radius: 0;
+                        }
+
+                        .report-header h2 {
+                            font-size: 1.5rem;
+                        }
+
+                        .table td, .table th {
+                            padding: 0.75rem;
+                            font-size: 0.813rem;
+                        }
+
+                        .print-button {
+                            position: static;
+                            margin: 1rem 0;
+                            width: 100%;
+                            justify-content: center;
+                        }
+
+                        .info-bar {
+                            padding: 1rem;
+                        }
+                    }
+                </style>
+                <script>
+                    function printReport() {
+                        window.print();
+                    }
+
+                    function applyFilters() {
+                        var groupByEmployee = document.getElementById('group_by_employee').checked;
+                        var currentUrl = new URL(window.location.href);
+                        currentUrl.searchParams.set('group_by_employee', groupByEmployee);
+                        window.location.href = currentUrl.toString();
+                    }
+                </script>
+            </t>
+            <div class="container">
+                <!-- Encabezado -->
+                <div class="report-header">
+                    <button onclick="printReport()" class="print-button">
+                        <i class="fa fa-print"/> Imprimir Reporte
+                    </button>
+                    <h2 class="text-center">Reporte de Asistencias</h2>
+                    <div class="text-center">
+                        <h4 t-esc="company_name"/>
+                        <p>
+                            Período: <t t-esc="fecha_desde" t-options="{'widget': 'date', 'format': 'dd/MM/yyyy'}"/> al 
+                            <t t-esc="fecha_hasta" t-options="{'widget': 'date', 'format': 'dd/MM/yyyy'}"/>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Barra de información -->
+                <div class="info-bar">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Total de Registros:</strong> <t t-esc="total_attendances"/>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Empleados:</strong> <t t-esc="filters.get('employees', 'Todos')"/>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="filter-item">
+                                <input type="checkbox" id="group_by_employee" class="filter-checkbox" 
+                                       t-att-checked="group_by_employee" onchange="applyFilters()"/>
+                                <label for="group_by_employee" class="filter-label">Agrupar por Empleado</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mensaje de error -->
+                <t t-if="error_message">
+                    <div class="alert alert-danger mb-4" role="alert">
+                        <i class="fa fa-exclamation-circle me-2"/>
+                        <span t-esc="error_message"/>
+                    </div>
+                </t>
+
+                <!-- Tabla de asistencias -->
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Empleado</th>
+                                <th>Fecha</th>
+                                <th>Día</th>
+                                <th>Tipo</th>
+                                <th>Entrada</th>
+                                <th>Salida</th>
+                                <th>Hrs Normal</th>
+                                <th>Hrs 50%</th>
+                                <th>Hrs 100%</th>
+                                <th>Hrs Feriado</th>
+                                <th>Total Hrs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="attendances" t-as="attendance">
+                                <!-- Grupo de empleado -->
+                                <t t-if="attendance.get('is_group') and attendance.get('is_employee')">
+                                    <tr class="group-row">
+                                        <td colspan="6">
+                                            <i class="fa fa-user me-2"/>
+                                            <strong><t t-esc="attendance.get('employee_name')"/></strong>
+                                        </td>
+                                        <td class="number-cell">
+                                            <t t-esc="attendance.get('horas_semana_normal')" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                        <td class="number-cell">
+                                            <t t-esc="attendance.get('horas_sabado_50')" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                        <td class="number-cell">
+                                            <t t-esc="attendance.get('horas_extra_100')" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                        <td class="number-cell">
+                                            <t t-esc="attendance.get('horas_feriado')" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                        <td class="number-cell">
+                                            <t t-esc="attendance.get('total_horas_trabajadas')" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                    </tr>
+                                    <t t-foreach="attendance.get('entries', [])" t-as="entry">
+                                        <tr class="group-detail">
+                                            <td></td>
+                                            <td t-esc="entry.get('fecha')" t-options="{'widget': 'date', 'format': 'dd/MM/yyyy'}"/>
+                                            <td t-esc="entry.get('dia_semana')"/>
+                                            <td t-esc="entry.get('tipo_dia')"/>
+                                            <td t-esc="entry.get('entrada')" t-options="{'widget': 'datetime', 'format': 'HH:mm:ss'}"/>
+                                            <td t-esc="entry.get('salida')" t-options="{'widget': 'datetime', 'format': 'HH:mm:ss'}"/>
+                                            <td class="number-cell" t-esc="entry.get('horas_semana_normal')" t-options='{"widget": "float", "precision": 2}'/>
+                                            <td class="number-cell" t-esc="entry.get('horas_sabado_50')" t-options='{"widget": "float", "precision": 2}'/>
+                                            <td class="number-cell" t-esc="entry.get('horas_extra_100')" t-options='{"widget": "float", "precision": 2}'/>
+                                            <td class="number-cell" t-esc="entry.get('horas_feriado')" t-options='{"widget": "float", "precision": 2}'/>
+                                            <td class="number-cell" t-esc="entry.get('total_horas_trabajadas')" t-options='{"widget": "float", "precision": 2}'/>
+                                        </tr>
+                                    </t>
+                                    <tr class="group-total">
+                                        <td colspan="6" class="text-end">
+                                            <strong>Total <t t-esc="attendance.get('employee_name')"/>:</strong>
+                                        </td>
+                                        <td class="number-cell">
+                                            <strong><t t-esc="attendance.get('horas_semana_normal')" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                        </td>
+                                        <td class="number-cell">
+                                            <strong><t t-esc="attendance.get('horas_sabado_50')" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                        </td>
+                                        <td class="number-cell">
+                                            <strong><t t-esc="attendance.get('horas_extra_100')" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                        </td>
+                                        <td class="number-cell">
+                                            <strong><t t-esc="attendance.get('horas_feriado')" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                        </td>
+                                        <td class="number-cell">
+                                            <strong><t t-esc="attendance.get('total_horas_trabajadas')" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                        </td>
+                                    </tr>
+                                </t>
+                                <!-- Registros sin agrupar -->
+                                <t t-else="">
+                                    <tr>
+                                        <td t-esc="attendance.get('employee_name')"/>
+                                        <td t-esc="attendance.get('fecha')" t-options="{'widget': 'date', 'format': 'dd/MM/yyyy'}"/>
+                                        <td t-esc="attendance.get('dia_semana')"/>
+                                        <td t-esc="attendance.get('tipo_dia')"/>
+                                        <td t-esc="attendance.get('entrada')" t-options="{'widget': 'datetime', 'format': 'HH:mm:ss'}"/>
+                                        <td t-esc="attendance.get('salida')" t-options="{'widget': 'datetime', 'format': 'HH:mm:ss'}"/>
+                                        <td class="number-cell" t-esc="attendance.get('horas_semana_normal')" t-options='{"widget": "float", "precision": 2}'/>
+                                        <td class="number-cell" t-esc="attendance.get('horas_sabado_50')" t-options='{"widget": "float", "precision": 2}'/>
+                                        <td class="number-cell" t-esc="attendance.get('horas_extra_100')" t-options='{"widget": "float", "precision": 2}'/>
+                                        <td class="number-cell" t-esc="attendance.get('horas_feriado')" t-options='{"widget": "float", "precision": 2}'/>
+                                        <td class="number-cell" t-esc="attendance.get('total_horas_trabajadas')" t-options='{"widget": "float", "precision": 2}'/>
+                                    </tr>
+                                </t>
+                            </t>
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td colspan="6" class="text-end">
+                                    <strong style="color: white;">TOTAL GENERAL:</strong>
+                                </td>
+                                <td class="number-cell">
+                                    <strong style="color: white;"><t t-esc="total_horas_semana_normal or 0.0" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                </td>
+                                <td class="number-cell">
+                                    <strong style="color: white;"><t t-esc="total_horas_sabado_50 or 0.0" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                </td>
+                                <td class="number-cell">
+                                    <strong style="color: white;"><t t-esc="total_horas_extra_100 or 0.0" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                </td>
+                                <td class="number-cell">
+                                    <strong style="color: white;"><t t-esc="total_horas_feriado or 0.0" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                </td>
+                                <td class="number-cell">
+                                    <strong style="color: white;"><t t-esc="total_horas_trabajadas or 0.0" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo> 

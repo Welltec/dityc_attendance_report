@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Reporte PDF -->
+        <record id="action_attendance_report_pdf" model="ir.actions.report">
+            <field name="name">Reporte de Asistencias</field>
+            <field name="model">dityc.attendance.report.wizard</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">dityc_attendance_report.attendance_report_template</field>
+            <field name="report_file">dityc_attendance_report.attendance_report_template</field>
+            <field name="print_report_name">'Asistencias - %s' % (object.date_from)</field>
+            <field name="binding_model_id" ref="model_dityc_attendance_report_wizard"/>
+            <field name="binding_type">report</field>
+        </record>
+
+        <!-- Reporte Excel -->
+        <record id="action_attendance_report_xlsx" model="ir.actions.report">
+            <field name="name">Reporte de Asistencias (Excel)</field>
+            <field name="model">dityc.attendance.report.wizard</field>
+            <field name="report_type">xlsx</field>
+            <field name="report_name">dityc_attendance_report.attendance_report_xlsx</field>
+            <field name="report_file">dityc_attendance_report.attendance_report_xlsx</field>
+            <field name="print_report_name">'Asistencias - %s.xlsx' % (object.date_from)</field>
+            <field name="binding_model_id" ref="model_dityc_attendance_report_wizard"/>
+            <field name="binding_type">report</field>
+        </record>
+    </data>
+</odoo> 

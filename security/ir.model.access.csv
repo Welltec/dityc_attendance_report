@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dityc_attendance_realtime_view_user,dityc.attendance.realtime.view.user,model_dityc_attendance_realtime_view,hr.group_hr_user,1,1,1,1
+access_dityc_attendance_realtime_cache_user,dityc.attendance.realtime.cache.user,model_dityc_attendance_realtime_cache,hr.group_hr_user,1,1,1,1
+access_dityc_attendance_realtime_wizard_user,dityc.attendance.realtime.wizard.user,model_dityc_attendance_realtime_wizard,hr.group_hr_user,1,1,1,1

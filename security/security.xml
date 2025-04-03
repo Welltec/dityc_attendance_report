@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Categoría para los grupos de seguridad -->
+        <record id="module_category_dityc_attendance" model="ir.module.category">
+            <field name="name">DITyC Attendance</field>
+            <field name="description">Gestión de reglas de asistencia DITyC</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Grupo para usuarios del módulo DITyC Attendance -->
+        <record id="group_dityc_attendance_user" model="res.groups">
+            <field name="name">Usuario DITyC Attendance</field>
+            <field name="category_id" ref="module_category_dityc_attendance"/>
+            <field name="implied_ids" eval="[(4, ref('hr.group_hr_user'))]"/>
+            <field name="users" eval="[(4, ref('base.user_admin'))]"/>
+        </record>
+
+        <!-- Grupo para administradores del módulo DITyC Attendance -->
+        <record id="group_dityc_attendance_manager" model="res.groups">
+            <field name="name">Administrador DITyC Attendance</field>
+            <field name="category_id" ref="module_category_dityc_attendance"/>
+            <field name="implied_ids" eval="[(4, ref('group_dityc_attendance_user'))]"/>
+            <field name="users" eval="[(4, ref('base.user_admin'))]"/>
+        </record>
+
+        <!-- Reglas de registro para la vista en tiempo real -->
+        <record id="attendance_realtime_view_company_rule" model="ir.rule">
+            <field name="name">Vista en Tiempo Real: Multi-compañía</field>
+            <field name="model_id" ref="model_dityc_attendance_realtime_view"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Reglas de registro para el caché -->
+        <record id="attendance_realtime_cache_company_rule" model="ir.rule">
+            <field name="name">Caché de Asistencia: Multi-compañía</field>
+            <field name="model_id" ref="model_dityc_attendance_realtime_cache"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Regla para permitir acceso directo a usuarios de RRHH -->
+        <record id="attendance_realtime_direct_access_rule" model="ir.rule">
+            <field name="name">Acceso Directo a Asistencias</field>
+            <field name="model_id" ref="model_dityc_attendance_realtime_view"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_user')), (4, ref('hr.group_hr_manager'))]"/>
+        </record>
+    </data>
+</odoo> 

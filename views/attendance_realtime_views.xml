@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Vista Tree Principal (Tiempo Real) -->
+        <record id="view_attendance_realtime_tree" model="ir.ui.view">
+            <field name="name">dityc.attendance.realtime.view.tree</field>
+            <field name="model">dityc.attendance.realtime.view</field>
+            <field name="arch" type="xml">
+                <tree string="Asistencias en Tiempo Real" 
+                      create="false" 
+                      edit="false" 
+                      delete="false"
+                      decoration-danger="not salida"
+                      decoration-info="tipo_dia == 'sabado_am' or tipo_dia == 'sabado_pm'"
+                      decoration-warning="es_feriado == True"
+                      decoration-muted="tipo_dia == 'domingo'">
+                    <header>
+                        <button name="refresh_view" string="Actualizar Datos" type="object" class="oe_highlight"/>
+                        <button name="export_xlsx" string="Exportar a Excel" type="object" icon="fa-download"/>
+                    </header>
+                    <field name="employee_id" widget="many2one_avatar"/>
+                    <field name="fecha" widget="date" options="{'format': 'dd/MM/yyyy'}"/>
+                    <field name="entrada" widget="datetime" options="{'format': 'dd/MM/yyyy HH:mm'}"/>
+                    <field name="salida" widget="datetime" options="{'format': 'dd/MM/yyyy HH:mm'}"/>
+                    <field name="dia_semana"/>
+                    <field name="tipo_dia"/>
+                    <field name="es_feriado"/>
+                    <field name="nombre_feriado"/>
+                    <field name="horas_semana_normal" widget="float_time" sum="Total L-V"/>
+                    <field name="horas_sabado_50" widget="float_time" sum="Total 50%"/>
+                    <field name="horas_extra_100" widget="float_time" sum="Total 100%"/>
+                    <field name="horas_feriado" widget="float_time" sum="Total Fer"/>
+                    <field name="total_horas_trabajadas" widget="float_time" sum="Total"/>
+                    <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Vista Tree para Caché -->
+        <record id="view_attendance_realtime_cache_tree" model="ir.ui.view">
+            <field name="name">dityc.attendance.realtime.cache.tree</field>
+            <field name="model">dityc.attendance.realtime.cache</field>
+            <field name="arch" type="xml">
+                <tree string="Historial de Asistencias" 
+                      create="false" 
+                      edit="false" 
+                      delete="false"
+                      decoration-danger="not salida"
+                      decoration-info="tipo_dia == 'sabado_am' or tipo_dia == 'sabado_pm'"
+                      decoration-warning="es_feriado == True"
+                      decoration-muted="tipo_dia == 'domingo'">
+                    <header>
+                        <button name="refresh_cache" string="Actualizar Caché" type="object" class="oe_highlight"/>
+                        <button name="export_xlsx" string="Exportar a Excel" type="object" icon="fa-download"/>
+                    </header>
+                    <field name="employee_id" widget="many2one_avatar"/>
+                    <field name="fecha" widget="date" options="{'format': 'dd/MM/yyyy'}"/>
+                    <field name="entrada" widget="datetime" options="{'format': 'dd/MM/yyyy HH:mm'}"/>
+                    <field name="salida" widget="datetime" options="{'format': 'dd/MM/yyyy HH:mm'}"/>
+                    <field name="dia_semana"/>
+                    <field name="tipo_dia"/>
+                    <field name="es_feriado" invisible="1"/>
+                    <field name="nombre_feriado"/>
+                    <field name="horas_semana_normal" widget="float_time" sum="Total L-V"/>
+                    <field name="horas_sabado_50" widget="float_time" sum="Total 50%"/>
+                    <field name="horas_extra_100" widget="float_time" sum="Total 100%"/>
+                    <field name="horas_feriado" widget="float_time" sum="Total Fer"/>
+                    <field name="total_horas_trabajadas" widget="float_time" sum="Total Hrs"/>
+                    <field name="es_dia_laborable" optional="hide"/>
+                    <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Vista Search Compartida -->
+        <record id="view_attendance_realtime_search" model="ir.ui.view">
+            <field name="name">dityc.attendance.realtime.view.search</field>
+            <field name="model">dityc.attendance.realtime.view</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Asistencias">
+                    <field name="employee_id"/>
+                    <field name="fecha" widget="date" options="{'format': 'dd/MM/yyyy'}"/>
+                    <field name="tipo_dia"/>
+                    <field name="nombre_feriado"/>
+                    <separator/>
+                    <!-- Filtros de Estado -->
+                    <filter string="Presentes" name="presentes" domain="[('entrada', '!=', False)]"/>
+                    <filter string="Ausentes" name="ausentes" domain="[('entrada', '=', False)]"/>
+                    <separator/>
+                    <!-- Filtros de Período -->
+                    <filter string="Hoy" name="hoy"
+                            domain="[('fecha', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                    <filter string="Ayer" name="ayer"
+                            domain="[('fecha', '=', (context_today() + relativedelta(days=-1)).strftime('%Y-%m-%d'))]"/>
+                    <filter string="Esta Semana" name="esta_semana"
+                            domain="[('fecha', '&gt;=', (context_today() + relativedelta(weeks=-1, days=1, weekday=0)).strftime('%Y-%m-%d')),
+                                    ('fecha', '&lt;=', (context_today() + relativedelta(weekday=6)).strftime('%Y-%m-%d'))]"/>
+                    <filter string="Semana Pasada" name="semana_pasada"
+                            domain="[('fecha', '&gt;=', (context_today() + relativedelta(weeks=-2, days=1, weekday=0)).strftime('%Y-%m-%d')),
+                                    ('fecha', '&lt;=', (context_today() + relativedelta(weeks=-1, weekday=6)).strftime('%Y-%m-%d'))]"/>
+                    <filter string="Este Mes" name="este_mes"
+                            domain="[('fecha', '&gt;=', (context_today() + relativedelta(day=1)).strftime('%Y-%m-%d')),
+                                    ('fecha', '&lt;=', (context_today() + relativedelta(months=1, day=1, days=-1)).strftime('%Y-%m-%d'))]"/>
+                    <filter string="Mes Pasado" name="mes_pasado"
+                            domain="[('fecha', '&gt;=', (context_today() + relativedelta(months=-1, day=1)).strftime('%Y-%m-%d')),
+                                    ('fecha', '&lt;=', (context_today() + relativedelta(day=1, days=-1)).strftime('%Y-%m-%d'))]"/>
+                    <filter string="Este Año" name="este_anio"
+                            domain="[('fecha', '&gt;=', (context_today() + relativedelta(month=1, day=1)).strftime('%Y-%m-%d')),
+                                    ('fecha', '&lt;=', (context_today() + relativedelta(month=12, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <separator/>
+                    <!-- Filtros por Día de la Semana -->
+                    <filter string="Lunes" name="lunes" domain="[('dia_semana', '=', 'Lunes')]"/>
+                    <filter string="Martes" name="martes" domain="[('dia_semana', '=', 'Martes')]"/>
+                    <filter string="Miércoles" name="miercoles" domain="[('dia_semana', '=', 'Miércoles')]"/>
+                    <filter string="Jueves" name="jueves" domain="[('dia_semana', '=', 'Jueves')]"/>
+                    <filter string="Viernes" name="viernes" domain="[('dia_semana', '=', 'Viernes')]"/>
+                    <filter string="Sábado" name="sabado" domain="[('dia_semana', '=', 'Sábado')]"/>
+                    <filter string="Domingo" name="domingo" domain="[('dia_semana', '=', 'Domingo')]"/>
+                    <separator/>
+                    <!-- Otros Filtros -->
+                    <filter string="Feriados" name="feriados" domain="[('es_feriado', '=', True)]"/>
+                    <filter string="Con Extras" name="con_extras" 
+                            domain="['|', '|', ('horas_sabado_50', '>', 0), ('horas_extra_100', '>', 0), ('horas_feriado', '>', 0)]"/>
+                    <group string="Agrupar Por">
+                        <filter string="Empleado" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                        <filter string="Fecha" name="group_fecha" context="{'group_by': 'fecha'}"/>
+                        <filter string="Tipo" name="group_tipo_dia" context="{'group_by': 'tipo_dia'}"/>
+                        <filter string="Compañía" name="group_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Vista Graph -->
+        <record id="view_attendance_realtime_graph" model="ir.ui.view">
+            <field name="name">dityc.attendance.realtime.view.graph</field>
+            <field name="model">dityc.attendance.realtime.view</field>
+            <field name="arch" type="xml">
+                <graph string="Estadísticas de Asistencia" type="bar" sample="1">
+                    <field name="employee_id"/>
+                    <field name="fecha" interval="day"/>
+                    <field name="horas_semana_normal" widget="float_time"/>
+                    <field name="horas_sabado_50" widget="float_time"/>
+                    <field name="horas_extra_100" widget="float_time"/>
+                    <field name="horas_feriado" widget="float_time"/>
+                    <field name="total_horas_trabajadas" type="measure" widget="float_time"/>
+                </graph>
+            </field>
+        </record>
+
+        <!-- Vista Pivot -->
+        <record id="view_attendance_realtime_pivot" model="ir.ui.view">
+            <field name="name">dityc.attendance.realtime.view.pivot</field>
+            <field name="model">dityc.attendance.realtime.view</field>
+            <field name="arch" type="xml">
+                <pivot string="Análisis de Asistencia" sample="1">
+                    <field name="employee_id" type="row"/>
+                    <field name="fecha" type="col" interval="day"/>
+                    <field name="horas_semana_normal" widget="float_time"/>
+                    <field name="horas_sabado_50" widget="float_time"/>
+                    <field name="horas_extra_100" widget="float_time"/>
+                    <field name="horas_feriado" widget="float_time"/>
+                    <field name="total_horas_trabajadas" type="measure" widget="float_time"/>
+                </pivot>
+            </field>
+        </record>
+
+        <!-- Acción Principal (Tiempo Real) -->
+        <record id="action_attendance_realtime" model="ir.actions.act_window">
+            <field name="name">Asistencia en Tiempo Real</field>
+            <field name="res_model">dityc.attendance.realtime.view</field>
+            <field name="view_mode">tree,graph,pivot</field>
+            <field name="context">{'search_default_hoy': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No hay registros de asistencia para mostrar
+                </p>
+                <p>
+                    Este reporte muestra las asistencias en tiempo real de todos los empleados,
+                    incluyendo los días sin marcaciones y el cálculo de horas según las reglas configuradas.
+                </p>
+            </field>
+        </record>
+
+        <!-- Acción para Caché -->
+        <record id="action_attendance_realtime_cache" model="ir.actions.act_window">
+            <field name="name">Historial de Asistencias</field>
+            <field name="res_model">dityc.attendance.realtime.cache</field>
+            <field name="view_mode">tree</field>
+            <field name="context">{'search_default_hoy': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No hay registros en el historial de asistencias.
+                </p>
+                <p>
+                    Este historial se actualiza automáticamente cada cierto tiempo
+                    y se usa para exportaciones y reportes programados.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo> 
