@@ -8,7 +8,7 @@
             <field name="arch" type="xml">
                 <tree string="Asistencias en Tiempo Real" 
                       create="false" 
-                      edit="true" 
+                      edit="false" 
                       delete="false"
                       decoration-danger="not salida"
                       decoration-info="tipo_dia == 'sabado_am' or tipo_dia == 'sabado_pm'"
