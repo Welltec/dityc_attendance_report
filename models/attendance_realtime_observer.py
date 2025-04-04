@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, api
+from odoo import models, api, fields
 import logging
 from datetime import datetime
 
@@ -28,20 +28,25 @@ class HrAttendance(models.Model):
         return records
 
     def write(self, vals):
-        """Sobrescribe write para actualizar la vista en tiempo real"""
-        # Asegurar que las fechas estén truncadas a minutos
-        if 'check_in' in vals:
+        """Sobrescribe el método write para actualizar el caché cuando se modifica un registro"""
+        # Si se está modificando check_in o check_out, redondeamos los segundos
+        if 'check_in' in vals and vals['check_in']:
+            if isinstance(vals['check_in'], str):
+                vals['check_in'] = fields.Datetime.from_string(vals['check_in'])
             vals['check_in'] = vals['check_in'].replace(second=0, microsecond=0)
-        if 'check_out' in vals:
+            
+        if 'check_out' in vals and vals['check_out']:
+            if isinstance(vals['check_out'], str):
+                vals['check_out'] = fields.Datetime.from_string(vals['check_out'])
             vals['check_out'] = vals['check_out'].replace(second=0, microsecond=0)
             
-        result = super(HrAttendance, self).write(vals)
-        try:
-            self.env['dityc.attendance.realtime.view']._actualizar_vista()
-            _logger.info("Vista actualizada después de modificar asistencias")
-        except Exception as e:
-            _logger.error("Error al actualizar vista después de modificar asistencias: %s", str(e))
-        return result
+        # Llamar al método original
+        res = super().write(vals)
+        
+        # Actualizar el caché
+        self.env['dityc.attendance.realtime.cache']._actualizar_cache_automatico()
+        
+        return res
 
     def unlink(self):
         """Sobrescribe unlink para actualizar la vista en tiempo real"""

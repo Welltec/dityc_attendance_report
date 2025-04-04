@@ -294,15 +294,21 @@ class AttendanceRealtimeView(models.Model):
                 )
                 -- Consulta final
                 SELECT 
-                    COALESCE(h.id, -fe.employee_id) as id,
+                    COALESCE(h.id, (fe.fecha::date - '2000-01-01'::date) * -1) as id,
                     fe.employee_id,
                     fe.company_id,
                     fe.fecha,
                     fe.nombre_dia as dia_semana,
                     -- Convertir a UTC para almacenamiento
-                    h.entrada_local AT TIME ZONE (SELECT zona_horaria FROM config) AT TIME ZONE 'UTC' as entrada,
-                    h.salida_local AT TIME ZONE (SELECT zona_horaria FROM config) AT TIME ZONE 'UTC' as salida,
-                    -- Determinar tipo de día
+                    CASE 
+                        WHEN h.id IS NOT NULL THEN h.entrada_local AT TIME ZONE (SELECT zona_horaria FROM config) AT TIME ZONE 'UTC'
+                        ELSE NULL
+                    END as entrada,
+                    CASE 
+                        WHEN h.id IS NOT NULL THEN h.salida_local AT TIME ZONE (SELECT zona_horaria FROM config) AT TIME ZONE 'UTC'
+                        ELSE NULL
+                    END as salida,
+                    -- Determinar tipo de día basado en el día real de la semana
                     CASE 
                         WHEN EXISTS (
                             SELECT 1 FROM feriados f 
@@ -350,7 +356,15 @@ class AttendanceRealtimeView(models.Model):
                 LEFT JOIN horas_calculadas h ON 
                     fe.employee_id = h.employee_id 
                     AND fe.fecha = h.fecha
-                ORDER BY fe.fecha DESC, fe.employee_id;
+                WHERE 
+                    h.id IS NOT NULL  -- Incluir todas las marcaciones existentes
+                    OR NOT EXISTS (    -- O incluir una línea para días sin marcaciones
+                        SELECT 1 
+                        FROM horas_calculadas h2 
+                        WHERE h2.employee_id = fe.employee_id 
+                        AND h2.fecha = fe.fecha
+                    )
+                ORDER BY fe.fecha DESC, fe.employee_id, h.entrada_local;
             """)
             _logger.info("Vista %s creada exitosamente", self._table)
             
