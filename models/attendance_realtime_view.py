@@ -44,6 +44,8 @@ class AttendanceRealtimeView(models.Model):
     horas_extra_100 = fields.Float(string='100% S/D', digits=(16, 2), readonly=True)
     horas_feriado = fields.Float(string='Hrs Feriado', digits=(16, 2), readonly=True)
     total_horas_trabajadas = fields.Float(string='Total Hrs', digits=(16, 2), readonly=True)
+    horas_justificadas = fields.Float(string='Hrs Justificadas', digits=(16, 2), readonly=True)
+    novedad_desc = fields.Char(string='Descripción Novedad', readonly=True)
 
     @api.model
     def init(self):
@@ -181,6 +183,35 @@ class AttendanceRealtimeView(models.Model):
                         UNION ALL SELECT '2025-12-25'::date, 'Navidad'::text
                     ) AS national_holidays
                     WHERE date_holiday >= (SELECT fecha_inicio FROM periodo)
+                ),
+                -- Obtener novedades de hr.leave
+                novedades AS (
+                    SELECT 
+                        l.employee_id,
+                        date_gen::date as fecha,
+                        -- Extraer el valor es_AR del JSON y agregar el periodo
+                        (CASE
+                            -- Si tiene formato JSON con es_AR, extraer solo ese valor
+                            WHEN lt.name::text LIKE '%"es_AR": "%' THEN
+                                substring(lt.name::text FROM '"es_AR": "([^"]+)"')
+                            -- Si no lo tiene, usar el texto completo
+                            ELSE lt.name::text
+                        END) || ' (' || to_char(l.request_date_from, 'DD/MM') || 
+                        CASE WHEN l.request_date_from::date != l.request_date_to::date THEN 
+                            '-' || to_char(l.request_date_to, 'DD/MM') 
+                        ELSE '' 
+                        END || ')' as descripcion_novedad
+                    FROM hr_leave l
+                    JOIN hr_leave_type lt ON l.holiday_status_id = lt.id
+                    CROSS JOIN generate_series(
+                        l.request_date_from::date, 
+                        l.request_date_to::date, 
+                        '1 day'::interval
+                    ) as date_gen
+                    WHERE 
+                        l.state = 'validate'
+                        AND date_gen::date >= (SELECT fecha_inicio FROM periodo)
+                        AND date_gen::date <= (SELECT fecha_fin FROM periodo)
                 ),
                 -- Calcular horas por regla
                 horas_calculadas AS (
@@ -350,8 +381,32 @@ class AttendanceRealtimeView(models.Model):
                         ) THEN ROUND(COALESCE(h.horas_feriado, 0)::numeric, 2)
                         ELSE 0
                     END as horas_feriado,
-                    -- Total de horas
-                    ROUND(COALESCE(h.horas_totales, 0)::numeric, 2) as total_horas_trabajadas
+                    -- Horas justificadas (9 hs si hay novedad)
+                    CASE
+                        WHEN EXISTS (
+                            SELECT 1 FROM novedades n 
+                            WHERE n.employee_id = fe.employee_id 
+                            AND n.fecha = fe.fecha
+                        ) THEN 9.0
+                        ELSE 0.0
+                    END as horas_justificadas,
+                    -- Total de horas (incluyendo horas justificadas)
+                    CASE
+                        WHEN EXISTS (
+                            SELECT 1 FROM novedades n 
+                            WHERE n.employee_id = fe.employee_id 
+                            AND n.fecha = fe.fecha
+                        ) THEN 9.0  -- Si hay novedad, el total es 9 horas
+                        ELSE ROUND(COALESCE(h.horas_totales, 0)::numeric, 2)  -- Si no, el total normal
+                    END as total_horas_trabajadas,
+                    -- Descripción de la novedad
+                    (
+                        SELECT n.descripcion_novedad 
+                        FROM novedades n 
+                        WHERE n.employee_id = fe.employee_id 
+                        AND n.fecha = fe.fecha 
+                        LIMIT 1
+                    ) as novedad_desc
                 FROM fechas_empleados fe
                 LEFT JOIN horas_calculadas h ON 
                     fe.employee_id = h.employee_id 

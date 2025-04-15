@@ -369,6 +369,7 @@
                                 <th>Hrs 50%</th>
                                 <th>Hrs 100%</th>
                                 <th>Hrs Feriado</th>
+                                <th>Hrs Justificadas</th>
                                 <th>Total Hrs</th>
                             </tr>
                         </thead>
@@ -394,6 +395,9 @@
                                             <t t-esc="attendance.get('horas_feriado')" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                         <td class="number-cell">
+                                            <t t-esc="attendance.get('horas_justificadas') or 0.0" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                        <td class="number-cell">
                                             <t t-esc="attendance.get('total_horas_trabajadas')" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                     </tr>
@@ -409,6 +413,7 @@
                                             <td class="number-cell" t-esc="entry.get('horas_sabado_50')" t-options='{"widget": "float", "precision": 2}'/>
                                             <td class="number-cell" t-esc="entry.get('horas_extra_100')" t-options='{"widget": "float", "precision": 2}'/>
                                             <td class="number-cell" t-esc="entry.get('horas_feriado')" t-options='{"widget": "float", "precision": 2}'/>
+                                            <td class="number-cell" t-esc="entry.get('horas_justificadas') or 0.0" t-options='{"widget": "float", "precision": 2}'/>
                                             <td class="number-cell" t-esc="entry.get('total_horas_trabajadas')" t-options='{"widget": "float", "precision": 2}'/>
                                         </tr>
                                     </t>
@@ -429,6 +434,9 @@
                                             <strong><t t-esc="attendance.get('horas_feriado')" t-options='{"widget": "float", "precision": 2}'/></strong>
                                         </td>
                                         <td class="number-cell">
+                                            <strong><t t-esc="attendance.get('horas_justificadas') or 0.0" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                        </td>
+                                        <td class="number-cell">
                                             <strong><t t-esc="attendance.get('total_horas_trabajadas')" t-options='{"widget": "float", "precision": 2}'/></strong>
                                         </td>
                                     </tr>
@@ -446,6 +454,7 @@
                                         <td class="number-cell" t-esc="attendance.get('horas_sabado_50')" t-options='{"widget": "float", "precision": 2}'/>
                                         <td class="number-cell" t-esc="attendance.get('horas_extra_100')" t-options='{"widget": "float", "precision": 2}'/>
                                         <td class="number-cell" t-esc="attendance.get('horas_feriado')" t-options='{"widget": "float", "precision": 2}'/>
+                                        <td class="number-cell" t-esc="attendance.get('horas_justificadas') or 0.0" t-options='{"widget": "float", "precision": 2}'/>
                                         <td class="number-cell" t-esc="attendance.get('total_horas_trabajadas')" t-options='{"widget": "float", "precision": 2}'/>
                                     </tr>
                                 </t>
@@ -467,6 +476,9 @@
                                 </td>
                                 <td class="number-cell">
                                     <strong style="color: white;"><t t-esc="total_horas_feriado or 0.0" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                </td>
+                                <td class="number-cell">
+                                    <strong style="color: white;"><t t-esc="total_horas_justificadas or 0.0" t-options='{"widget": "float", "precision": 2}'/></strong>
                                 </td>
                                 <td class="number-cell">
                                     <strong style="color: white;"><t t-esc="total_horas_trabajadas or 0.0" t-options='{"widget": "float", "precision": 2}'/></strong>

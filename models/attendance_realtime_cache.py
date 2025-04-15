@@ -41,6 +41,8 @@ class AttendanceRealtimeCache(models.Model):
     horas_extra_100 = fields.Float(string='100% S/D', digits=(16, 2), default=0.0)
     horas_feriado = fields.Float(string='Hrs Feriado', digits=(16, 2), default=0.0)
     total_horas_trabajadas = fields.Float(string='Total Hrs', digits=(16, 2), default=0.0)
+    horas_justificadas = fields.Float(string='Hrs Justificadas', digits=(16, 2), default=0.0)
+    novedad_desc = fields.Char(string='Desc. Novedad')
 
 
 
@@ -76,7 +78,7 @@ class AttendanceRealtimeCache(models.Model):
                     employee_id, company_id, fecha, dia_semana, 
                     entrada, salida, tipo_dia, es_feriado, nombre_feriado,
                     horas_semana_normal, horas_sabado_50, horas_extra_100, 
-                    horas_feriado, total_horas_trabajadas,
+                    horas_feriado, total_horas_trabajadas, horas_justificadas, novedad_desc,
                     create_uid, create_date, write_uid, write_date
                 )
                 SELECT 
@@ -86,7 +88,7 @@ class AttendanceRealtimeCache(models.Model):
                     salida AT TIME ZONE 'UTC',
                     tipo_dia, es_feriado, nombre_feriado,
                     horas_semana_normal, horas_sabado_50, horas_extra_100,
-                    horas_feriado, total_horas_trabajadas,
+                    horas_feriado, total_horas_trabajadas, horas_justificadas, novedad_desc,
                     1, NOW() AT TIME ZONE 'UTC', 1, NOW() AT TIME ZONE 'UTC'
                 FROM dityc_attendance_realtime_view
                 -- Aseguramos que se obtengan todos los registros, incluso si no hay asistencias
@@ -149,6 +151,7 @@ class AttendanceRealtimeCache(models.Model):
                     entrada, salida, tipo_dia, es_feriado, nombre_feriado,
                     horas_semana_normal, horas_sabado_50, horas_extra_100, 
                     horas_feriado, total_horas_trabajadas, es_dia_laborable,
+                    horas_justificadas, novedad_desc,
                     create_uid, create_date, write_uid, write_date
                 )
                 SELECT 
@@ -167,6 +170,7 @@ class AttendanceRealtimeCache(models.Model):
                             AND rca.dayofweek = EXTRACT(DOW FROM v.fecha)::text
                         )
                     ELSE TRUE END as es_dia_laborable,
+                    v.horas_justificadas, v.novedad_desc,
                     1, NOW() AT TIME ZONE 'UTC', 1, NOW() AT TIME ZONE 'UTC'
                 FROM dityc_attendance_realtime_view v
                 JOIN hr_employee e ON v.employee_id = e.id

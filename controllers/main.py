@@ -33,11 +33,12 @@ class DitycAttendanceReportController(http.Controller):
             total_horas_sabado = sum(float(a.get('horas_sabado_50') or 0) for a in atts)
             total_horas_extra = sum(float(a.get('horas_extra_100') or 0) for a in atts)
             total_horas_feriado = sum(float(a.get('horas_feriado') or 0) for a in atts)
+            total_horas_justificadas = sum(float(a.get('horas_justificadas') or 0) for a in atts)
             total_horas = sum(float(a.get('total_horas_trabajadas') or 0) for a in atts)
             
-            _logger.info("Totales para %s: Normal=%s, Sábado 50%%=%s, Extra=%s, Feriado=%s, Total=%s",
+            _logger.info("Totales para %s: Normal=%s, Sábado 50%%=%s, Extra=%s, Feriado=%s, Justificadas=%s, Total=%s",
                         employee_name, total_horas_normal, total_horas_sabado, 
-                        total_horas_extra, total_horas_feriado, total_horas)
+                        total_horas_extra, total_horas_feriado, total_horas_justificadas, total_horas)
             
             grouped_data.append({
                 'is_group': True,
@@ -47,6 +48,7 @@ class DitycAttendanceReportController(http.Controller):
                 'horas_sabado_50': round(total_horas_sabado, 2),
                 'horas_extra_100': round(total_horas_extra, 2),
                 'horas_feriado': round(total_horas_feriado, 2),
+                'horas_justificadas': round(total_horas_justificadas, 2),
                 'total_horas_trabajadas': round(total_horas, 2),
                 'entries': atts
             })
@@ -104,6 +106,7 @@ class DitycAttendanceReportController(http.Controller):
                     'horas_sabado_50': attendance.horas_sabado_50 or 0.0,
                     'horas_extra_100': attendance.horas_extra_100 or 0.0,
                     'horas_feriado': attendance.horas_feriado or 0.0,
+                    'horas_justificadas': attendance.horas_justificadas or 0.0,
                     'total_horas_trabajadas': attendance.total_horas_trabajadas or 0.0
                 })
 
@@ -131,6 +134,7 @@ class DitycAttendanceReportController(http.Controller):
                     'total_horas_sabado_50': 0.0,
                     'total_horas_extra_100': 0.0,
                     'total_horas_feriado': 0.0,
+                    'total_horas_justificadas': 0.0,
                     'total_horas_trabajadas': 0.0
                 })
             
@@ -140,6 +144,7 @@ class DitycAttendanceReportController(http.Controller):
             total_sabado_50 = 0.0
             total_extra_100 = 0.0
             total_feriado = 0.0
+            total_justificadas = 0.0
             total_trabajadas = 0.0
             
             if attendance_data:
@@ -152,6 +157,7 @@ class DitycAttendanceReportController(http.Controller):
                     horas_sabado = float(att.get('horas_sabado_50') or 0)
                     horas_extra = float(att.get('horas_extra_100') or 0)
                     horas_feriado = float(att.get('horas_feriado') or 0)
+                    horas_justificadas = float(att.get('horas_justificadas') or 0)
                     horas_total = float(att.get('total_horas_trabajadas') or 0)
                     
                     # Acumular totales
@@ -159,11 +165,12 @@ class DitycAttendanceReportController(http.Controller):
                     total_sabado_50 += horas_sabado
                     total_extra_100 += horas_extra
                     total_feriado += horas_feriado
+                    total_justificadas += horas_justificadas
                     total_trabajadas += horas_total
                 
                 # Registrar valores para depuración
-                _logger.info("Totales calculados: Normal: %s, Sábado 50%%: %s, Extra 100%%: %s, Feriado: %s, Total: %s",
-                             total_normal, total_sabado_50, total_extra_100, total_feriado, total_trabajadas)
+                _logger.info("Totales calculados: Normal: %s, Sábado 50%%: %s, Extra 100%%: %s, Feriado: %s, Justificadas: %s, Total: %s",
+                             total_normal, total_sabado_50, total_extra_100, total_feriado, total_justificadas, total_trabajadas)
             else:
                 _logger.warning("No hay datos de asistencia para calcular totales")
             
@@ -187,6 +194,7 @@ class DitycAttendanceReportController(http.Controller):
                 'total_horas_sabado_50': round(total_sabado_50, 2),
                 'total_horas_extra_100': round(total_extra_100, 2),
                 'total_horas_feriado': round(total_feriado, 2),
+                'total_horas_justificadas': round(total_justificadas, 2),
                 'total_horas_trabajadas': round(total_trabajadas, 2)
             }
             
@@ -213,6 +221,7 @@ class DitycAttendanceReportController(http.Controller):
                 'total_horas_sabado_50': 0.0,
                 'total_horas_extra_100': 0.0,
                 'total_horas_feriado': 0.0,
+                'total_horas_justificadas': 0.0,
                 'total_horas_trabajadas': 0.0
             })
 

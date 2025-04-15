@@ -95,7 +95,7 @@ class AttendanceRealtimeWizard(models.TransientModel):
         # Encabezados
         headers = [
             'Empleado', 'Fecha', 'Día', 'Tipo', 'Entrada', 'Salida',
-            'Hrs Normal', 'Hrs 50%', 'Hrs 100%', 'Hrs Feriado', 'Total Hrs'
+            'Hrs Normal', 'Hrs 50%', 'Hrs 100%', 'Hrs Feriado', 'Hrs Justificadas', 'Total Hrs'
         ]
         
         for col, header in enumerate(headers):
@@ -107,7 +107,7 @@ class AttendanceRealtimeWizard(models.TransientModel):
         worksheet.set_column('C:C', 12)  # Día
         worksheet.set_column('D:D', 15)  # Tipo
         worksheet.set_column('E:F', 10)  # Entrada/Salida
-        worksheet.set_column('G:K', 12)  # Horas
+        worksheet.set_column('G:L', 12)  # Horas
 
         # Obtener datos
         domain = [
@@ -137,6 +137,7 @@ class AttendanceRealtimeWizard(models.TransientModel):
                             'horas_sabado_50': 0,
                             'horas_extra_100': 0,
                             'horas_feriado': 0,
+                            'horas_justificadas': 0,
                             'total_horas_trabajadas': 0
                         }
                     }
@@ -145,6 +146,7 @@ class AttendanceRealtimeWizard(models.TransientModel):
                 employee_groups[attendance.employee_id]['totals']['horas_sabado_50'] += attendance.horas_sabado_50 or 0
                 employee_groups[attendance.employee_id]['totals']['horas_extra_100'] += attendance.horas_extra_100 or 0
                 employee_groups[attendance.employee_id]['totals']['horas_feriado'] += attendance.horas_feriado or 0
+                employee_groups[attendance.employee_id]['totals']['horas_justificadas'] += attendance.horas_justificadas or 0
                 employee_groups[attendance.employee_id]['totals']['total_horas_trabajadas'] += attendance.total_horas_trabajadas or 0
 
             for employee, data in employee_groups.items():
@@ -154,7 +156,8 @@ class AttendanceRealtimeWizard(models.TransientModel):
                 worksheet.write(row, 7, data['totals']['horas_sabado_50'], total_format)
                 worksheet.write(row, 8, data['totals']['horas_extra_100'], total_format)
                 worksheet.write(row, 9, data['totals']['horas_feriado'], total_format)
-                worksheet.write(row, 10, data['totals']['total_horas_trabajadas'], total_format)
+                worksheet.write(row, 10, data['totals']['horas_justificadas'], total_format)
+                worksheet.write(row, 11, data['totals']['total_horas_trabajadas'], total_format)
                 row += 1
 
                 # Detalles
@@ -169,7 +172,8 @@ class AttendanceRealtimeWizard(models.TransientModel):
                     worksheet.write(row, 7, entry.horas_sabado_50 or 0, number_format)
                     worksheet.write(row, 8, entry.horas_extra_100 or 0, number_format)
                     worksheet.write(row, 9, entry.horas_feriado or 0, number_format)
-                    worksheet.write(row, 10, entry.total_horas_trabajadas or 0, number_format)
+                    worksheet.write(row, 10, entry.horas_justificadas or 0, number_format)
+                    worksheet.write(row, 11, entry.total_horas_trabajadas or 0, number_format)
                     row += 1
         else:
             # Sin agrupar
@@ -184,7 +188,8 @@ class AttendanceRealtimeWizard(models.TransientModel):
                 worksheet.write(row, 7, attendance.horas_sabado_50 or 0, number_format)
                 worksheet.write(row, 8, attendance.horas_extra_100 or 0, number_format)
                 worksheet.write(row, 9, attendance.horas_feriado or 0, number_format)
-                worksheet.write(row, 10, attendance.total_horas_trabajadas or 0, number_format)
+                worksheet.write(row, 10, attendance.horas_justificadas or 0, number_format)
+                worksheet.write(row, 11, attendance.total_horas_trabajadas or 0, number_format)
                 row += 1
 
         workbook.close()

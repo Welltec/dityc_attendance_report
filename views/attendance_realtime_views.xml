@@ -37,6 +37,8 @@
                     <field name="tipo_dia"/>
                     <field name="es_feriado"/>
                     <field name="nombre_feriado"/>
+                    <field name="horas_justificadas" widget="float_time" sum="Total Just"/>
+                    <field name="novedad_desc"/>
                     <field name="horas_semana_normal" widget="float_time" sum="Total L-V"/>
                     <field name="horas_sabado_50" widget="float_time" sum="Total 50%"/>
                     <field name="horas_extra_100" widget="float_time" sum="Total 100%"/>
@@ -88,6 +90,8 @@
                     <field name="horas_extra_100" widget="float_time" sum="Total 100%"/>
                     <field name="horas_feriado" widget="float_time" sum="Total Fer"/>
                     <field name="total_horas_trabajadas" widget="float_time" sum="Total Hrs"/>
+                    <field name="horas_justificadas" widget="float_time" sum="Total Just"/>
+                    <field name="novedad_desc"/>
                     <field name="es_dia_laborable" optional="hide"/>
                     <field name="company_id" groups="base.group_multi_company" optional="hide"/>
                 </tree>
@@ -104,6 +108,7 @@
                     <field name="fecha" widget="date" options="{'format': 'dd/MM/yyyy'}"/>
                     <field name="tipo_dia"/>
                     <field name="nombre_feriado"/>
+                    <field name="novedad_desc" filter_domain="[('novedad_desc','ilike',self)]" string="Descripción novedad"/>
                     <separator/>
                     <!-- Filtros de Estado -->
                     <filter string="Presentes" name="presentes" domain="[('entrada', '!=', False)]"/>
@@ -143,10 +148,15 @@
                     <filter string="Feriados" name="feriados" domain="[('es_feriado', '=', True)]"/>
                     <filter string="Con Extras" name="con_extras" 
                             domain="['|', '|', ('horas_sabado_50', '>', 0), ('horas_extra_100', '>', 0), ('horas_feriado', '>', 0)]"/>
+                    <filter string="Con Novedades" name="con_novedades" 
+                            domain="[('horas_justificadas', '>', 0)]"/>
+                    <filter string="Sin Novedades" name="sin_novedades" 
+                            domain="[('horas_justificadas', '=', 0)]"/>
                     <group string="Agrupar Por">
                         <filter string="Empleado" name="group_employee" context="{'group_by': 'employee_id'}"/>
                         <filter string="Fecha" name="group_fecha" context="{'group_by': 'fecha'}"/>
                         <filter string="Tipo" name="group_tipo_dia" context="{'group_by': 'tipo_dia'}"/>
+                        <filter string="Novedad" name="group_novedad" context="{'group_by': 'novedad_desc'}"/>
                         <filter string="Compañía" name="group_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
                     </group>
                 </search>
@@ -166,6 +176,7 @@
                     <field name="horas_extra_100" widget="float_time"/>
                     <field name="horas_feriado" widget="float_time"/>
                     <field name="total_horas_trabajadas" type="measure" widget="float_time"/>
+                    <field name="horas_justificadas" type="measure" widget="float_time"/>
                 </graph>
             </field>
         </record>
@@ -183,6 +194,7 @@
                     <field name="horas_extra_100" widget="float_time"/>
                     <field name="horas_feriado" widget="float_time"/>
                     <field name="total_horas_trabajadas" type="measure" widget="float_time"/>
+                    <field name="horas_justificadas" type="measure" widget="float_time"/>
                 </pivot>
             </field>
         </record>
